@@ -7,19 +7,22 @@ app.use(express.json());
 app.use(cors());
 
 // conexión a MySQL
+const mysql = require('mysql2');
+
 const db = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: '',
-    database: 'ganacol'
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME
 });
 
-db.connect(err => {
-    if (err) {
-        console.log('Error conexión DB:', err);
-    } else {
-        console.log('Conectado a MySQL');
-    }
+db.connect((err) => {
+  if (err) {
+    console.log("❌ Error MySQL:", err);
+  } else {
+    console.log("✅ MySQL conectado");
+  }
 });
 
 // ==============================
