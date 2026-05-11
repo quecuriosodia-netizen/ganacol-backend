@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 // 🔥 CAMBIA ESTA IP SI USAS CELULAR
-const BASE_URL = "http://127.0.0.1:3000";
+const BASE_URL = "https://ganacol-backend.onrender.com";
 
 void main() {
   runApp(MyApp());
