@@ -173,7 +173,50 @@ app.post('/activate/:id', (req, res) => {
                                                 [userId, sponsorDelSponsor]
                                             );
                                         }
+                                         // 🔥 CONTAR RED PARA ALERTAS
+                                         db.query(
+                                         `
+                                         SELECT COUNT(*) as total
+                                         FROM users
+                                         WHERE sponsor_id = ?
+                                         OR sponsor_id IN (
+                                            SELECT id FROM users WHERE sponsor_id = ?
+                                         )
+                                         `,
+                                         [sponsor_id, sponsor_id],
+                                         (err, result) => {
 
+                                            if (err) console.log(err);
+
+                                            const total = result[0].total;
+
+                                            // 🔥 ALERTA 10
+                                            if (total == 10) {
+
+                                                db.query(
+                                                    'INSERT INTO alerts (user_id, mensaje) VALUES (?, ?)',
+                                                    [
+                                                        sponsor_id,
+                                                        'Usuario alcanzó 10 personas y debe subir a $53'
+                                                    ]
+                                                );
+
+                                            }
+
+                                            // 🔥 ALERTA 20
+                                            if (total == 20) {
+
+                                                db.query(
+                                                    'INSERT INTO alerts (user_id, mensaje) VALUES (?, ?)',
+                                                    [
+                                                        sponsor_id,
+                                                        'Usuario alcanzó 20 personas y debe subir a $130'
+                                                    ]
+                                                );
+
+                                            }
+
+                                        });
                                         res.send({
                                             message: 'Usuario activado correctamente',
                                             codigo: nuevoCodigo
