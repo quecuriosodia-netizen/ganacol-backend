@@ -28,19 +28,45 @@ db.connect((err) => {
 // REGISTER (AHORA PENDIENTE)
 // ==============================
 app.post('/register', (req, res) => {
+
     const { nombre, email, telefono, password, sponsor_id } = req.body;
 
+    // 🔥 VALIDAR MAXIMO 12 DIRECTOS
     db.query(
-        'INSERT INTO users (codigo, nombre, email, telefono, password, sponsor_id, estado) VALUES (NULL, ?, ?, ?, ?, ?, "pendiente")',
-        [nombre, email, telefono, password, sponsor_id],
-        (err) => {
+        'SELECT COUNT(*) AS total FROM users WHERE sponsor_id = ?',
+        [sponsor_id],
+        (err, result) => {
+
             if (err) return res.send(err);
 
-            res.send({
-                message: 'Usuario registrado, pendiente de activación'
-            });
+            const total = result[0].total;
+
+            if (total >= 12) {
+                return res.send({
+                    success: false,
+                    message: 'Este usuario ya tiene 12 directos'
+                });
+            }
+
+            // 🔥 REGISTRO
+            db.query(
+                'INSERT INTO users (codigo, nombre, email, telefono, password, sponsor_id, estado) VALUES (NULL, ?, ?, ?, ?, ?, "pendiente")',
+                [nombre, email, telefono, password, sponsor_id],
+                (err) => {
+
+                    if (err) return res.send(err);
+
+                    res.send({
+                        success: true,
+                        message: 'Usuario registrado correctamente'
+                    });
+
+                }
+            );
+
         }
     );
+
 });
 
 // ==============================
