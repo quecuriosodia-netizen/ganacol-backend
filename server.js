@@ -357,6 +357,36 @@ app.get('/my-plan/:id', (req, res) => {
     );
 });
 
+app.post('/validate-sponsor', (req, res) => {
+
+    const { codigo } = req.body;
+
+    db.query(
+        'SELECT * FROM users WHERE codigo = ? AND estado = "activo"',
+        [codigo],
+        (err, result) => {
+
+            if (err) return res.send(err);
+
+            if (result.length > 0) {
+
+                res.send({
+                    success: true,
+                    sponsor: result[0]
+                });
+
+            } else {
+
+                res.send({
+                    success: false,
+                    message: 'Link inválido o usuario inactivo'
+                });
+
+            }
+        }
+    );
+});
+
 // ==============================
 // SERVIDOR
 // ==============================

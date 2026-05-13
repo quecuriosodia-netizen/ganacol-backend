@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-// 🔥 CAMBIA ESTA IP SI USAS CELULAR
 const BASE_URL = "https://ganacol-backend.onrender.com";
 
 void main() {
@@ -56,12 +55,15 @@ class _MyAppState extends State<MyApp> {
 }
 
 // ================= LOGIN =================
+
 class LoginPage extends StatefulWidget {
   @override
   _LoginPageState createState() => _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
+  bool mostrarPasswordLogin = false;
+
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
 
@@ -103,22 +105,45 @@ class _LoginPageState extends State<LoginPage> {
               controller: emailController,
               decoration: InputDecoration(labelText: "Email"),
             ),
+
+            SizedBox(height: 15),
+
             TextField(
               controller: passwordController,
-              decoration: InputDecoration(labelText: "Password"),
-              obscureText: true,
+              decoration: InputDecoration(
+                labelText: "Password",
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    mostrarPasswordLogin
+                        ? Icons.visibility
+                        : Icons.visibility_off,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      mostrarPasswordLogin =
+                          !mostrarPasswordLogin;
+                    });
+                  },
+                ),
+              ),
+              obscureText: !mostrarPasswordLogin,
             ),
+
             SizedBox(height: 20),
+
             ElevatedButton(
               onPressed: login,
               child: Text("Ingresar"),
             ),
+
             TextButton(
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (_) => RegisterPage(sponsorId: "1")),
+                    builder: (_) =>
+                        RegisterPage(sponsorId: "1"),
+                  ),
                 );
               },
               child: Text("Crear cuenta"),
@@ -131,16 +156,20 @@ class _LoginPageState extends State<LoginPage> {
 }
 
 // ================= REGISTER =================
+
 class RegisterPage extends StatefulWidget {
   final String sponsorId;
 
   RegisterPage({required this.sponsorId});
 
   @override
-  _RegisterPageState createState() => _RegisterPageState();
+  _RegisterPageState createState() =>
+      _RegisterPageState();
 }
 
 class _RegisterPageState extends State<RegisterPage> {
+  bool mostrarPasswordRegister = false;
+
   TextEditingController nombre = TextEditingController();
   TextEditingController email = TextEditingController();
   TextEditingController telefono = TextEditingController();
@@ -178,22 +207,51 @@ class _RegisterPageState extends State<RegisterPage> {
           children: [
             Text("Invitado por ID: ${widget.sponsorId}"),
 
+            SizedBox(height: 15),
+
             TextField(
               controller: nombre,
-              decoration: InputDecoration(labelText: "Nombre"),
+              decoration:
+                  InputDecoration(labelText: "Nombre"),
             ),
+
+            SizedBox(height: 15),
+
             TextField(
               controller: email,
-              decoration: InputDecoration(labelText: "Email"),
+              decoration:
+                  InputDecoration(labelText: "Email"),
             ),
+
+            SizedBox(height: 15),
+
             TextField(
               controller: telefono,
-              decoration: InputDecoration(labelText: "Teléfono"),
+              decoration:
+                  InputDecoration(labelText: "Teléfono"),
             ),
+
+            SizedBox(height: 15),
+
             TextField(
               controller: password,
-              decoration: InputDecoration(labelText: "Password"),
-              obscureText: true,
+              decoration: InputDecoration(
+                labelText: "Password",
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    mostrarPasswordRegister
+                        ? Icons.visibility
+                        : Icons.visibility_off,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      mostrarPasswordRegister =
+                          !mostrarPasswordRegister;
+                    });
+                  },
+                ),
+              ),
+              obscureText: !mostrarPasswordRegister,
             ),
 
             SizedBox(height: 20),
@@ -210,6 +268,7 @@ class _RegisterPageState extends State<RegisterPage> {
 }
 
 // ================= HOME =================
+
 class HomePage extends StatefulWidget {
   final Map user;
 
@@ -225,7 +284,8 @@ class _HomePageState extends State<HomePage> {
   double total = 0;
 
   bool isAdmin() {
-    return widget.user['email'] == "quecuriosodia@gmail.com";
+    return widget.user['email'] ==
+        "quecuriosodia@gmail.com";
   }
 
   String getUserEmail(id) {
@@ -246,7 +306,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> getUsers() async {
-    final res = await http.get(Uri.parse('$BASE_URL/users'));
+    final res = await http.get(
+      Uri.parse('$BASE_URL/users'),
+    );
+
     if (res.statusCode == 200) {
       setState(() {
         users = json.decode(res.body);
@@ -256,8 +319,11 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> getCommissions() async {
     final res = await http.get(
-      Uri.parse('$BASE_URL/my-commissions/${widget.user['id']}'),
+      Uri.parse(
+        '$BASE_URL/my-commissions/${widget.user['id']}',
+      ),
     );
+
     if (res.statusCode == 200) {
       setState(() {
         commissions = json.decode(res.body);
@@ -267,12 +333,18 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> getTotal() async {
     final res = await http.get(
-      Uri.parse('$BASE_URL/my-total/${widget.user['id']}'),
+      Uri.parse(
+        '$BASE_URL/my-total/${widget.user['id']}',
+      ),
     );
+
     if (res.statusCode == 200) {
       final data = json.decode(res.body);
+
       setState(() {
-        total = double.tryParse(data['total'].toString()) ?? 0;
+        total =
+            double.tryParse(data['total'].toString()) ??
+                0;
       });
     }
   }
@@ -287,44 +359,57 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Hola ${widget.user['nombre']}"),
+        title:
+            Text("Hola ${widget.user['nombre']}"),
         actions: [
           if (isAdmin())
             IconButton(
-              icon: Icon(Icons.admin_panel_settings),
+              icon:
+                  Icon(Icons.admin_panel_settings),
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => AdminPage()),
+                  MaterialPageRoute(
+                    builder: (_) => AdminPage(),
+                  ),
                 );
               },
             ),
+
           IconButton(
             icon: Icon(Icons.group),
             onPressed: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (_) => NetworkPage(user: widget.user)),
+                  builder: (_) =>
+                      NetworkPage(user: widget.user),
+                ),
               );
             },
           ),
+
           IconButton(
             icon: Icon(Icons.person),
             onPressed: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (_) => ProfilePage(user: widget.user)),
+                  builder: (_) =>
+                      ProfilePage(user: widget.user),
+                ),
               );
             },
           ),
+
           IconButton(
             icon: Icon(Icons.logout),
             onPressed: () {
               Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (_) => LoginPage()),
+                MaterialPageRoute(
+                  builder: (_) => LoginPage(),
+                ),
                 (route) => false,
               );
             },
@@ -339,25 +424,37 @@ class _HomePageState extends State<HomePage> {
             color: Colors.green,
             child: Column(
               children: [
-                Text("TOTAL GANADO",
-                    style: TextStyle(color: Colors.white)),
+                Text(
+                  "TOTAL GANADO",
+                  style:
+                      TextStyle(color: Colors.white),
+                ),
+
                 SizedBox(height: 10),
-                Text("\$${total.toStringAsFixed(2)}",
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold)),
+
+                Text(
+                  "\$${total.toStringAsFixed(2)}",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
           ),
+
           Expanded(
             child: ListView.builder(
               itemCount: commissions.length,
               itemBuilder: (_, i) {
                 return ListTile(
-                  title: Text("\$${commissions[i]['monto']}"),
+                  title: Text(
+                    "\$${commissions[i]['monto']}",
+                  ),
                   subtitle: Text(
-                      "De: ${getUserEmail(commissions[i]['from_user_id'])}"),
+                    "De: ${getUserEmail(commissions[i]['from_user_id'])}",
+                  ),
                 );
               },
             ),
@@ -369,16 +466,21 @@ class _HomePageState extends State<HomePage> {
 }
 
 // ================= ADMIN =================
+
 class AdminPage extends StatefulWidget {
   @override
-  _AdminPageState createState() => _AdminPageState();
+  _AdminPageState createState() =>
+      _AdminPageState();
 }
 
 class _AdminPageState extends State<AdminPage> {
   List users = [];
 
   Future<void> getUsers() async {
-    final response = await http.get(Uri.parse('$BASE_URL/users'));
+    final response = await http.get(
+      Uri.parse('$BASE_URL/users'),
+    );
+
     if (response.statusCode == 200) {
       setState(() {
         users = json.decode(response.body);
@@ -387,12 +489,18 @@ class _AdminPageState extends State<AdminPage> {
   }
 
   Future<void> activar(int id) async {
-    await http.post(Uri.parse('$BASE_URL/activate/$id'));
+    await http.post(
+      Uri.parse('$BASE_URL/activate/$id'),
+    );
+
     getUsers();
   }
 
   Future<void> desactivar(int id) async {
-    await http.post(Uri.parse('$BASE_URL/deactivate/$id'));
+    await http.post(
+      Uri.parse('$BASE_URL/deactivate/$id'),
+    );
+
     getUsers();
   }
 
@@ -405,23 +513,37 @@ class _AdminPageState extends State<AdminPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Admin Panel")),
+      appBar:
+          AppBar(title: Text("Admin Panel")),
       body: ListView.builder(
         itemCount: users.length,
         itemBuilder: (_, i) {
           var u = users[i];
+
           return ListTile(
             title: Text(u['nombre']),
-            subtitle: Text("Código: ${u['codigo']}"),
+            subtitle:
+                Text("Código: ${u['codigo']}"),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                    icon: Icon(Icons.check, color: Colors.green),
-                    onPressed: () => activar(u['id'])),
+                  icon: Icon(
+                    Icons.check,
+                    color: Colors.green,
+                  ),
+                  onPressed: () =>
+                      activar(u['id']),
+                ),
+
                 IconButton(
-                    icon: Icon(Icons.close, color: Colors.red),
-                    onPressed: () => desactivar(u['id'])),
+                  icon: Icon(
+                    Icons.close,
+                    color: Colors.red,
+                  ),
+                  onPressed: () =>
+                      desactivar(u['id']),
+                ),
               ],
             ),
           );
@@ -432,6 +554,7 @@ class _AdminPageState extends State<AdminPage> {
 }
 
 // ================= PERFIL =================
+
 class ProfilePage extends StatelessWidget {
   final Map user;
 
@@ -464,15 +587,23 @@ class NetworkPage extends StatefulWidget {
 
 class _NetworkPageState extends State<NetworkPage> {
   List directos = [];
+  bool cargando = true;
 
-  Future<void> getNetwork() async {
+  Future<void> getNetwork(int userId) async {
+    setState(() {
+      cargando = true;
+    });
+
     final res = await http.get(
-      Uri.parse('$BASE_URL/my-network/${widget.user['id']}'),
+      Uri.parse('$BASE_URL/my-network/$userId'),
     );
+
     if (res.statusCode == 200) {
       final data = json.decode(res.body);
+
       setState(() {
         directos = data['directos'];
+        cargando = false;
       });
     }
   }
@@ -480,21 +611,135 @@ class _NetworkPageState extends State<NetworkPage> {
   @override
   void initState() {
     super.initState();
-    getNetwork();
+    getNetwork(widget.user['id']);
+  }
+
+  Widget cajaUsuario(Map u) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => NetworkPage(
+              user: u,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        width: 90,
+        height: 90,
+        margin: EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color: Colors.green,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Text(
+            u['codigo']?.toString() ?? "SIN",
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget espaciosVacios() {
+    int faltantes = 12 - directos.length;
+
+    return Row(
+      children: List.generate(
+        faltantes,
+        (index) => Container(
+          width: 90,
+          height: 90,
+          margin: EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade300,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey),
+          ),
+          child: Center(
+            child: Text(
+              "VACÍO",
+              style: TextStyle(
+                color: Colors.black54,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Mi Red")),
-      body: ListView(
-        children: directos
-            .map((u) => ListTile(
-                  title: Text(u['nombre']),
-                  subtitle: Text("Código: ${u['codigo']}"),
-                ))
-            .toList(),
+      appBar: AppBar(
+        title: Text("Red de ${widget.user['nombre']}"),
       ),
+      body: cargando
+          ? Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                SizedBox(height: 20),
+
+                Text(
+                  "Directos",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                SizedBox(height: 20),
+
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      ...directos.map((u) => cajaUsuario(u)).toList(),
+                      ...List.generate(
+                        12 - directos.length,
+                        (index) => Container(
+                          width: 90,
+                          height: 90,
+                          margin: EdgeInsets.symmetric(horizontal: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey),
+                          ),
+                          child: Center(
+                            child: Text(
+                              "VACÍO",
+                              style: TextStyle(
+                                color: Colors.black54,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                SizedBox(height: 30),
+
+                Text(
+                  "Toque un código para bajar en la red",
+                  style: TextStyle(
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }
