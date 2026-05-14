@@ -179,6 +179,41 @@ app.post('/activate/:id', (req, res) => {
                                         userData[0].sponsor_id;
 
                                     // ======================================
+                                    // CONTAR RED DEL USUARIO ACTIVADO
+                                    // ======================================
+
+                                    db.query(
+                                      `SELECT COUNT(*) as total
+                                       FROM users
+                                       WHERE sponsor_id = ?
+                                       OR sponsor_id IN (
+                                       SELECT id FROM users WHERE sponsor_id = ?
+                                       )
+                                      `,
+[userId, userId],
+(err, redResult) => {
+
+```
+    if (err) return res.send(err);
+
+    const totalRedUsuario =
+        redResult[0].total;
+
+    // 🔥 PLAN INICIAL
+    let montoComision = 22;
+
+    // 🔥 NIVEL 2
+    if (totalRedUsuario >= 10) {
+        montoComision = 50;
+    }
+
+    // 🔥 NIVEL 3
+    if (totalRedUsuario >= 20) {
+        montoComision = 127;
+    }
+```
+    
+                                    // ======================================
                                     // CONTAR ACTIVOS DEL SPONSOR
                                     // ======================================
 
@@ -252,15 +287,14 @@ app.post('/activate/:id', (req, res) => {
                                                             
                                                             // 🔥 CALCULAR COMISIÓN SEGÚN PLAN
 
-                                                            let montoComision = 22;
-
+                                                            
                                                             // 🔥 NIVEL 2
-                                                            if (total >= 10) {
+                                                             {
                                                             montoComision = 50;
                                                             }
 
                                                             // 🔥 NIVEL 3
-                                                            if (total >= 20) {
+                                                             {
                                                             montoComision = 127;
                                                             }
 
@@ -289,7 +323,7 @@ app.post('/activate/:id', (req, res) => {
                                                                 );
 
                                                             }
-
+});
                                                             // ======================================
                                                             // RESPUESTA FINAL
                                                             // ======================================
