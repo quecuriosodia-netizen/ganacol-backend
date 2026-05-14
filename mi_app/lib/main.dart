@@ -62,12 +62,17 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  bool mostrarPasswordLogin = false;
 
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
+  TextEditingController sponsorController = TextEditingController();
+
+  bool mostrarPassword = false;
+
+  // ================= LOGIN =================
 
   Future<void> login() async {
+
     final response = await http.post(
       Uri.parse('$BASE_URL/login'),
       headers: {"Content-Type": "application/json"},
@@ -80,74 +85,168 @@ class _LoginPageState extends State<LoginPage> {
     final data = json.decode(response.body);
 
     if (data['user'] != null) {
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (context) => HomePage(user: data['user']),
         ),
       );
+
     } else {
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Login incorrecto")),
       );
+
     }
+
   }
+
+  // ================= VALIDAR SPONSOR =================
+
+  Future<void> validarSponsor() async {
+
+    final response = await http.post(
+      Uri.parse('$BASE_URL/validate-sponsor'),
+      headers: {"Content-Type": "application/json"},
+      body: json.encode({
+        "codigo": sponsorController.text
+      }),
+    );
+
+    final data = json.decode(response.body);
+
+    if (data['success']) {
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => RegisterPage(
+            sponsorId: data['sponsor']['id'].toString(),
+          ),
+        ),
+      );
+
+    } else {
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(data['message'])),
+      );
+
+    }
+
+  }
+
+  // ================= UI =================
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
-      appBar: AppBar(title: Text("Login")),
+
+      appBar: AppBar(
+        title: Text("GANACOL"),
+      ),
+
       body: Padding(
+
         padding: EdgeInsets.all(20),
+
         child: Column(
+
           children: [
+
+            // EMAIL
             TextField(
               controller: emailController,
-              decoration: InputDecoration(labelText: "Email"),
+              decoration: InputDecoration(
+                labelText: "Email",
+                border: OutlineInputBorder(),
+              ),
             ),
 
             SizedBox(height: 15),
 
+            // PASSWORD
             TextField(
               controller: passwordController,
+              obscureText: !mostrarPassword,
+
               decoration: InputDecoration(
                 labelText: "Password",
+                border: OutlineInputBorder(),
+
                 suffixIcon: IconButton(
+
                   icon: Icon(
-                    mostrarPasswordLogin
+                    mostrarPassword
                         ? Icons.visibility
                         : Icons.visibility_off,
                   ),
+
                   onPressed: () {
+
                     setState(() {
-                      mostrarPasswordLogin =
-                          !mostrarPasswordLogin;
+                      mostrarPassword = !mostrarPassword;
                     });
+
                   },
+
                 ),
               ),
-              obscureText: !mostrarPasswordLogin,
             ),
 
             SizedBox(height: 20),
 
-            ElevatedButton(
-              onPressed: login,
-              child: Text("Ingresar"),
+            // BOTON LOGIN
+            SizedBox(
+              width: double.infinity,
+
+              child: ElevatedButton(
+                onPressed: login,
+                child: Text("Ingresar"),
+              ),
             ),
 
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        RegisterPage(sponsorId: "1"),
-                  ),
-                );
-              },
-              child: Text("Crear cuenta"),
+            SizedBox(height: 40),
+
+            Divider(),
+
+            SizedBox(height: 20),
+
+            Text(
+              "¿Tienes código de invitación?",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
+
+            SizedBox(height: 15),
+
+            // CODIGO SPONSOR
+            TextField(
+              controller: sponsorController,
+
+              decoration: InputDecoration(
+                labelText: "Código del sponsor",
+                border: OutlineInputBorder(),
+              ),
+            ),
+
+            SizedBox(height: 15),
+
+            // BOTON VALIDAR
+            SizedBox(
+              width: double.infinity,
+
+              child: ElevatedButton(
+                onPressed: validarSponsor,
+                child: Text("Crear cuenta"),
+              ),
+            ),
+
           ],
         ),
       ),
@@ -518,36 +617,111 @@ class _AdminPageState extends State<AdminPage> {
       body: ListView.builder(
         itemCount: users.length,
         itemBuilder: (_, i) {
-          var u = users[i];
 
-          return ListTile(
-            title: Text(u['nombre']),
-            subtitle:
-                Text("Código: ${u['codigo']}"),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: Icon(
-                    Icons.check,
-                    color: Colors.green,
-                  ),
-                  onPressed: () =>
-                      activar(u['id']),
-                ),
+  var u = users[i];
 
-                IconButton(
-                  icon: Icon(
-                    Icons.close,
-                    color: Colors.red,
-                  ),
-                  onPressed: () =>
-                      desactivar(u['id']),
-                ),
-              ],
+  // 🔥 COLOR SEGÚN ESTADO
+  Color estadoColor = Colors.orange;
+
+  if (u['estado'] == 'activo') {
+    estadoColor = Colors.green;
+  }
+
+  if (u['estado'] == 'inactivo') {
+    estadoColor = Colors.red;
+  }
+
+  return Card(
+
+    margin: EdgeInsets.symmetric(
+      horizontal: 10,
+      vertical: 5,
+    ),
+
+    child: ListTile(
+
+      // 🔥 NOMBRE
+      title: Text(
+        u['nombre'],
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+
+      // 🔥 INFO
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+
+          SizedBox(height: 5),
+
+          Text(
+            "Código: ${u['codigo'] ?? 'Sin código'}",
+          ),
+
+          SizedBox(height: 8),
+
+          Container(
+
+            padding: EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 5,
             ),
-          );
-        },
+
+            decoration: BoxDecoration(
+              color: estadoColor,
+              borderRadius: BorderRadius.circular(20),
+            ),
+
+            child: Text(
+
+              u['estado'].toUpperCase(),
+
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+
+            ),
+
+          ),
+
+        ],
+      ),
+
+      // 🔥 BOTONES
+      trailing: Row(
+
+        mainAxisSize: MainAxisSize.min,
+
+        children: [
+
+          // ✅ SOLO MOSTRAR ACTIVAR
+          if (u['estado'] != 'activo')
+            IconButton(
+              icon: Icon(
+                Icons.check,
+                color: Colors.green,
+              ),
+              onPressed: () => activar(u['id']),
+            ),
+
+          // ✅ SOLO MOSTRAR DESACTIVAR
+          if (u['estado'] != 'inactivo')
+            IconButton(
+              icon: Icon(
+                Icons.close,
+                color: Colors.red,
+              ),
+              onPressed: () => desactivar(u['id']),
+            ),
+
+        ],
+      ),
+
+    ),
+  );
+},
       ),
     );
   }
