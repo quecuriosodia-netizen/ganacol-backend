@@ -221,8 +221,8 @@ app.post('/activate/:id', (req, res) => {
                                                     if (beneficiario) {
 
                                                         db.query(
-                                                            'INSERT INTO commissions (from_user_id, to_user_id, monto, nivel) VALUES (?, ?, 10, 1)',
-                                                            [userId, beneficiario]
+                                                            'INSERT INTO commissions (from_user_id, to_user_id, monto, nivel) VALUES (?, ?, ?, 1)',
+                                                            [userId, beneficiario, montoComision]
                                                         );
 
                                                     }
@@ -249,6 +249,20 @@ app.post('/activate/:id', (req, res) => {
 
                                                             const total =
                                                                 result[0].total;
+                                                            
+                                                            // 🔥 CALCULAR COMISIÓN SEGÚN PLAN
+
+                                                            let montoComision = 22;
+
+                                                            // 🔥 NIVEL 2
+                                                            if (total >= 10) {
+                                                            montoComision = 50;
+                                                            }
+
+                                                            // 🔥 NIVEL 3
+                                                            if (total >= 20) {
+                                                            montoComision = 127;
+                                                            }
 
                                                             // 🔥 ALERTA 10
                                                             if (total == 10) {

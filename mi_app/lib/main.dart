@@ -381,6 +381,44 @@ class _HomePageState extends State<HomePage> {
   List users = [];
   List commissions = [];
   double total = 0;
+  // 🔥 NUEVAS VARIABLES
+  double pagoMensual = 0;
+
+  int totalPersonas = 0;
+
+  String proximoCorte = "";
+
+  Future<void> getPlan() async {
+
+  final response = await http.get(
+    Uri.parse('$BASE_URL/my-plan/${widget.user['id']}'),
+  );
+
+  final data = json.decode(response.body);
+
+  setState(() {
+
+    pagoMensual =
+        double.parse(data['pago_mensual'].toString());
+
+    totalPersonas =
+        data['total_personas'];
+
+    final hoy = DateTime.now();
+
+    if (hoy.day <= 15) {
+
+      proximoCorte = "15";
+
+    } else {
+
+      proximoCorte = "30";
+
+    }
+
+  });
+
+}
 
   bool isAdmin() {
     return widget.user['email'] ==
@@ -452,6 +490,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     loadData();
+    getPlan();
   }
 
   @override
@@ -518,30 +557,59 @@ class _HomePageState extends State<HomePage> {
       body: Column(
         children: [
           Container(
-            width: double.infinity,
-            padding: EdgeInsets.all(20),
-            color: Colors.green,
-            child: Column(
-              children: [
-                Text(
-                  "TOTAL GANADO",
-                  style:
-                      TextStyle(color: Colors.white),
-                ),
+  width: double.infinity,
+  padding: EdgeInsets.all(20),
+  color: Colors.green,
 
-                SizedBox(height: 10),
+  child: Column(
 
-                Text(
-                  "\$${total.toStringAsFixed(2)}",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
+    crossAxisAlignment:
+        CrossAxisAlignment.start,
+
+    children: [
+
+      Text(
+        "TOTAL GANADO",
+        style: TextStyle(
+          color: Colors.white70,
+          fontSize: 16,
+        ),
+      ),
+
+      SizedBox(height: 10),
+
+      Text(
+        "\$${pagoMensual.toStringAsFixed(0)} USD",
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 35,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+
+      SizedBox(height: 15),
+
+      Text(
+        "Personas en red: $totalPersonas",
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 16,
+        ),
+      ),
+
+      SizedBox(height: 8),
+
+      Text(
+        "Próximo corte: Día $proximoCorte",
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 16,
+        ),
+      ),
+
+    ],
+  ),
+),
 
           Expanded(
             child: ListView.builder(
@@ -602,7 +670,75 @@ class _AdminPageState extends State<AdminPage> {
 
     getUsers();
   }
+  
+  Future<void> eliminarUsuario(int id) async {
 
+  TextEditingController passwordController =
+      TextEditingController();
+
+  showDialog(
+    context: context,
+    builder: (_) {
+
+      return AlertDialog(
+
+        title: Text("Clave de administrador"),
+
+        content: TextField(
+          controller: passwordController,
+          obscureText: true,
+          decoration: InputDecoration(
+            labelText: "Ingrese la clave",
+          ),
+        ),
+
+        actions: [
+
+          TextButton(
+            child: Text("Cancelar"),
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+
+          ElevatedButton(
+            child: Text("Eliminar"),
+            onPressed: () async {
+
+              final response = await http.post(
+                Uri.parse('$BASE_URL/delete-user/$id'),
+
+                headers: {
+                  "Content-Type": "application/json"
+                },
+
+                body: json.encode({
+                  "adminPassword":
+                      passwordController.text
+                }),
+              );
+
+              final data =
+                  json.decode(response.body);
+
+              Navigator.pop(context);
+
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(
+                SnackBar(
+                  content: Text(data['message']),
+                ),
+              );
+
+              getUsers();
+            },
+          ),
+
+        ],
+      );
+    },
+  );
+}
   @override
   void initState() {
     super.initState();
@@ -715,7 +851,13 @@ class _AdminPageState extends State<AdminPage> {
               ),
               onPressed: () => desactivar(u['id']),
             ),
-
+            IconButton(
+              icon: Icon(
+                Icons.delete,
+                color: Colors.black,
+              ),
+              onPressed: () => eliminarUsuario(u['id']),
+            ),
         ],
       ),
 
@@ -788,39 +930,100 @@ class _NetworkPageState extends State<NetworkPage> {
     getNetwork(widget.user['id']);
   }
 
-  Widget cajaUsuario(Map u) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => NetworkPage(
-              user: u,
-            ),
-          ),
-        );
-      },
-      child: Container(
-        width: 90,
-        height: 90,
-        margin: EdgeInsets.symmetric(horizontal: 8),
-        decoration: BoxDecoration(
-          color: Colors.green,
-          borderRadius: BorderRadius.circular(12),
+  Widget cajaUsuario(dynamic u) {
+
+  Color colorEstado = Colors.orange;
+
+  if (u['estado'] == 'activo') {
+    colorEstado = Colors.green;
+  }
+
+  if (u['estado'] == 'inactivo') {
+    colorEstado = Colors.red;
+  }
+
+  return GestureDetector(
+
+    onTap: () {
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => NetworkPage(user: u),
         ),
-        child: Center(
-          child: Text(
-            u['codigo']?.toString() ?? "SIN",
+      );
+
+    },
+
+    child: Container(
+
+      width: 100,
+      height: 100,
+
+      margin: EdgeInsets.symmetric(horizontal: 8),
+
+      decoration: BoxDecoration(
+
+        color: colorEstado,
+
+        borderRadius: BorderRadius.circular(12),
+
+      ),
+
+      child: Column(
+
+        mainAxisAlignment: MainAxisAlignment.center,
+
+        children: [
+
+          // 🔥 CÓDIGO
+          Text(
+
+            "${u['codigo']}",
+
             style: TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
-              fontSize: 18,
+              fontSize: 20,
             ),
+
           ),
-        ),
+
+          SizedBox(height: 6),
+
+          // 🔥 NOMBRE
+          Padding(
+
+            padding: EdgeInsets.symmetric(horizontal: 5),
+
+            child: Text(
+
+              u['nombre'],
+
+              textAlign: TextAlign.center,
+
+              maxLines: 2,
+
+              overflow: TextOverflow.ellipsis,
+
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+              ),
+
+            ),
+
+          ),
+
+        ],
+
       ),
-    );
-  }
+
+    ),
+
+  );
+
+}
 
   Widget espaciosVacios() {
     int faltantes = 12 - directos.length;
@@ -863,13 +1066,99 @@ class _NetworkPageState extends State<NetworkPage> {
               children: [
                 SizedBox(height: 20),
 
-                Text(
-                  "Directos",
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+// 🔥 USUARIO ACTUAL
+Center(
+  child: Container(
+
+    width: 120,
+    height: 110,
+
+    decoration: BoxDecoration(
+
+      color: widget.user['estado'] == 'activo'
+          ? Colors.green
+          : widget.user['estado'] == 'inactivo'
+              ? Colors.red
+              : Colors.orange,
+
+      borderRadius: BorderRadius.circular(15),
+
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black12,
+          blurRadius: 5,
+        ),
+      ],
+
+    ),
+
+    child: Column(
+
+      mainAxisAlignment: MainAxisAlignment.center,
+
+      children: [
+
+        Text(
+
+          "${widget.user['codigo']}",
+
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+          ),
+
+        ),
+
+        SizedBox(height: 8),
+
+        Padding(
+
+          padding: EdgeInsets.symmetric(horizontal: 6),
+
+          child: Text(
+
+            widget.user['nombre'],
+
+            textAlign: TextAlign.center,
+
+            maxLines: 2,
+
+            overflow: TextOverflow.ellipsis,
+
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+            ),
+
+          ),
+
+        ),
+
+      ],
+
+    ),
+
+  ),
+),
+
+SizedBox(height: 25),
+
+Icon(
+  Icons.keyboard_arrow_down,
+  size: 35,
+  color: Colors.grey,
+),
+
+SizedBox(height: 10),
+
+Text(
+  "Directos",
+  style: TextStyle(
+    fontSize: 22,
+    fontWeight: FontWeight.bold,
+  ),
+),
 
                 SizedBox(height: 20),
 
