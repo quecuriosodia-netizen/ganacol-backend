@@ -429,30 +429,52 @@ app.get('/my-network/:id', (req, res) => {
 // ==============================
 // PLAN
 // ==============================
+
 app.get('/my-plan/:id', (req, res) => {
+
     const userId = req.params.id;
 
+    // 🔥 CONTAR PAGOS RECIBIDOS
     db.query(
+
         `SELECT COUNT(*) as total
-         FROM users
-         WHERE sponsor_id = ?
-         OR sponsor_id IN (SELECT id FROM users WHERE sponsor_id = ?)`,
-        [userId, userId],
+         FROM commissions
+         WHERE to_user_id = ?`,
+
+        [userId],
+
         (err, result) => {
-            if (err) return res.status(500).send({ success: false, message: 'Error en el servidor' });
+
+            if (err) {
+                return res.status(500).send({
+                    success: false,
+                    message: 'Error en el servidor'
+                });
+            }
 
             const total = result[0].total;
 
             let pago = 22;
-            if (total >= 20) {
-                pago = 130;
-            } else if (total >= 10) {
+
+            // 🔥 NIVEL 2
+            if (total >= 10) {
                 pago = 53;
             }
 
-            res.send({ total_personas: total, pago_mensual: pago });
+            // 🔥 NIVEL 3
+            if (total >= 20) {
+                pago = 130;
+            }
+
+            res.send({
+                total_personas: total,
+                pago_mensual: pago
+            });
+
         }
+
     );
+
 });
 
 // ==============================
