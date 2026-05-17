@@ -40,26 +40,41 @@ app.post('/register', (req, res) => {
 
             const total = result[0].total;
 
-            if (total >= 12) {
-                return res.send({
-                    success: false,
-                    message: 'Este usuario ya tiene 12 directos'
-                });
-            }
-
-            // REGISTRO
+            // OBTENER DATOS DEL SPONSOR
             db.query(
-                'INSERT INTO users (codigo, nombre, email, telefono, password, sponsor_id, estado) VALUES (NULL, ?, ?, ?, ?, ?, "pendiente")',
-                [nombre, email, telefono, password, sponsor_id],
-                (err) => {
+                'SELECT email FROM users WHERE id = ?',
+                [sponsor_id],
+                (err, sponsorResult) => {
                     if (err) return res.status(500).send({ success: false, message: 'Error en el servidor' });
 
-                    res.send({
-                        success: true,
-                        message: 'Usuario registrado correctamente'
-                    });
+                    const sponsorEmail = sponsorResult[0]?.email || '';
+
+                    // SOLO USUARIOS NORMALES TIENEN LÍMITE DE 12
+                    if (sponsorEmail !== 'quecuriosodia@gmail.com' && total >= 12) {
+                        return res.send({
+                            success: false,
+                            message: 'Este usuario ya tiene 12 directos'
+                        });
+                    }
+
+                    // REGISTRO
+                    db.query(
+                        `INSERT INTO users
+                        (codigo, nombre, email, telefono, password, sponsor_id, estado)
+                        VALUES
+                        (NULL, ?, ?, ?, ?, ?, "pendiente")`,
+                        [nombre, email, telefono, password, sponsor_id],
+                        (err) => {
+                            if (err) return res.status(500).send({ success: false, message: 'Error en el servidor' });
+
+                            res.send({
+                                success: true,
+                                message: 'Usuario registrado correctamente'
+                            });
+                        }
+                    );
                 }
-            );
+            ); // ← ESTA LLAVE FALTABA — cerraba el callback de SELECT email
         }
     );
 });
@@ -77,15 +92,9 @@ app.post('/login', (req, res) => {
             if (err) return res.status(500).send({ success: false, message: 'Error en el servidor' });
 
             if (results.length > 0) {
-                res.json({
-                    success: true,
-                    user: results[0]
-                });
+                res.json({ success: true, user: results[0] });
             } else {
-                res.json({
-                    success: false,
-                    message: 'Credenciales incorrectas'
-                });
+                res.json({ success: false, message: 'Credenciales incorrectas' });
             }
         }
     );
@@ -107,7 +116,6 @@ app.get('/users', (req, res) => {
 app.post('/activate/:id', (req, res) => {
     const userId = req.params.id;
 
-    // PASO 1: Verificar si el usuario existe y su estado
     db.query(
         'SELECT * FROM users WHERE id = ?',
         [userId],
@@ -124,7 +132,6 @@ app.post('/activate/:id', (req, res) => {
 
             const sponsor_id = resultEstado[0].sponsor_id;
 
-            // PASO 2: Generar nuevo código
             db.query(
                 'SELECT MAX(codigo) AS maxCodigo FROM users',
                 (err, resultCodigo) => {
@@ -134,14 +141,12 @@ app.post('/activate/:id', (req, res) => {
                         ? resultCodigo[0].maxCodigo + 1
                         : 501;
 
-                    // PASO 3: Activar usuario
                     db.query(
                         "UPDATE users SET estado = 'activo', codigo = ? WHERE id = ?",
                         [nuevoCodigo, userId],
                         (err) => {
                             if (err) return res.status(500).send({ success: false, message: 'Error en el servidor' });
 
-                            // PASO 4: Contar red del usuario recién activado (para calcular SU comisión)
                             db.query(
                                 `SELECT COUNT(*) as total
                                  FROM users
@@ -155,7 +160,6 @@ app.post('/activate/:id', (req, res) => {
 
                                     const totalRedUsuario = redUsuarioResult[0].total;
 
-                                    // CALCULAR MONTO DE COMISIÓN SEGÚN RED DEL USUARIO ACTIVADO
                                     let montoComision = 22;
                                     if (totalRedUsuario >= 20) {
                                         montoComision = 127;
@@ -163,7 +167,6 @@ app.post('/activate/:id', (req, res) => {
                                         montoComision = 50;
                                     }
 
-                                    // PASO 5: Contar activos del sponsor para saber quién recibe la comisión
                                     db.query(
                                         'SELECT COUNT(*) AS total FROM users WHERE sponsor_id = ? AND estado = "activo"',
                                         [sponsor_id],
@@ -172,7 +175,6 @@ app.post('/activate/:id', (req, res) => {
 
                                             const numero = countResult[0].total;
 
-                                            // PASO 6: Obtener sponsor del sponsor
                                             db.query(
                                                 'SELECT sponsor_id FROM users WHERE id = ?',
                                                 [sponsor_id],
@@ -181,7 +183,6 @@ app.post('/activate/:id', (req, res) => {
 
                                                     const sponsorDelSponsor = sponsorData[0]?.sponsor_id || null;
 
-                                                    // Determinar beneficiario de la comisión
                                                     let beneficiario;
                                                     if ([1, 4, 7, 10].includes(numero)) {
                                                         beneficiario = sponsorDelSponsor;
@@ -189,7 +190,6 @@ app.post('/activate/:id', (req, res) => {
                                                         beneficiario = sponsor_id;
                                                     }
 
-                                                    // PASO 7: Registrar comisión nivel 1
                                                     if (beneficiario) {
                                                         db.query(
                                                             'INSERT INTO commissions (from_user_id, to_user_id, monto, nivel) VALUES (?, ?, ?, 1)',
@@ -197,7 +197,6 @@ app.post('/activate/:id', (req, res) => {
                                                         );
                                                     }
 
-                                                    // PASO 8: Contar red del SPONSOR para alertas de upgrade
                                                     db.query(
                                                         `SELECT COUNT(*) as total
                                                          FROM users
@@ -211,7 +210,6 @@ app.post('/activate/:id', (req, res) => {
 
                                                             const totalRedSponsor = redSponsorResult[0].total;
 
-                                                            // ALERTA 10
                                                             if (totalRedSponsor === 10) {
                                                                 db.query(
                                                                     'INSERT INTO alerts (user_id, mensaje) VALUES (?, ?)',
@@ -219,7 +217,6 @@ app.post('/activate/:id', (req, res) => {
                                                                 );
                                                             }
 
-                                                            // ALERTA 20
                                                             if (totalRedSponsor === 20) {
                                                                 db.query(
                                                                     'INSERT INTO alerts (user_id, mensaje) VALUES (?, ?)',
@@ -227,7 +224,6 @@ app.post('/activate/:id', (req, res) => {
                                                                 );
                                                             }
 
-                                                            // RESPUESTA FINAL
                                                             res.send({
                                                                 success: true,
                                                                 message: 'Usuario activado correctamente',
@@ -271,14 +267,12 @@ app.post('/deactivate/:id', (req, res) => {
 
             const sponsor = result[0].sponsor_id;
 
-            // Mover red al sponsor
             db.query(
                 'UPDATE users SET sponsor_id = ? WHERE sponsor_id = ?',
                 [sponsor, userId],
                 (err) => {
                     if (err) return res.status(500).send({ success: false, message: 'Error en el servidor' });
 
-                    // Desactivar usuario
                     db.query(
                         "UPDATE users SET estado = 'inactivo' WHERE id = ?",
                         [userId],
@@ -304,13 +298,10 @@ app.post('/delete-user/:id', (req, res) => {
     const userId = req.params.id;
     const { adminPassword } = req.body;
 
-    // VALIDAR CLAVE ADMIN
-    // ⚠️ IMPORTANTE: Mueve esta clave a una variable de entorno (process.env.ADMIN_PASSWORD)
     if (adminPassword !== process.env.ADMIN_PASSWORD) {
         return res.send({ success: false, message: 'Clave incorrecta' });
     }
 
-    // Obtener sponsor
     db.query(
         'SELECT sponsor_id FROM users WHERE id = ?',
         [userId],
@@ -323,28 +314,24 @@ app.post('/delete-user/:id', (req, res) => {
 
             const sponsor = result[0].sponsor_id;
 
-            // Mover red al sponsor
             db.query(
                 'UPDATE users SET sponsor_id = ? WHERE sponsor_id = ?',
                 [sponsor, userId],
                 (err) => {
                     if (err) return res.status(500).send({ success: false, message: 'Error en el servidor' });
 
-                    // Borrar comisiones
                     db.query(
                         'DELETE FROM commissions WHERE from_user_id = ? OR to_user_id = ?',
                         [userId, userId],
                         (err) => {
                             if (err) return res.status(500).send({ success: false, message: 'Error en el servidor' });
 
-                            // Borrar alertas
                             db.query(
                                 'DELETE FROM alerts WHERE user_id = ?',
                                 [userId],
                                 (err) => {
                                     if (err) return res.status(500).send({ success: false, message: 'Error en el servidor' });
 
-                                    // Borrar usuario
                                     db.query(
                                         'DELETE FROM users WHERE id = ?',
                                         [userId],
@@ -429,52 +416,32 @@ app.get('/my-network/:id', (req, res) => {
 // ==============================
 // PLAN
 // ==============================
-
 app.get('/my-plan/:id', (req, res) => {
-
     const userId = req.params.id;
 
-    // 🔥 CONTAR PAGOS RECIBIDOS
     db.query(
-
         `SELECT COUNT(*) as total
          FROM commissions
          WHERE to_user_id = ?`,
-
         [userId],
-
         (err, result) => {
-
-            if (err) {
-                return res.status(500).send({
-                    success: false,
-                    message: 'Error en el servidor'
-                });
-            }
+            if (err) return res.status(500).send({ success: false, message: 'Error en el servidor' });
 
             const total = result[0].total;
 
             let pago = 22;
-
-            // 🔥 NIVEL 2
-            if (total >= 10) {
-                pago = 53;
-            }
-
-            // 🔥 NIVEL 3
             if (total >= 20) {
                 pago = 130;
+            } else if (total >= 10) {
+                pago = 53;
             }
 
             res.send({
                 total_personas: total,
                 pago_mensual: pago
             });
-
         }
-
     );
-
 });
 
 // ==============================
@@ -501,61 +468,37 @@ app.post('/validate-sponsor', (req, res) => {
 // ==============================
 // CAMBIAR CONTRASEÑA
 // ==============================
-
 app.post('/change-password', (req, res) => {
+    const { userId, currentPassword, newPassword } = req.body;
 
-    const {
-        userId,
-        currentPassword,
-        newPassword
-    } = req.body;
-
-    // 🔥 VALIDAR USUARIO
     db.query(
         'SELECT * FROM users WHERE id = ?',
         [userId],
         (err, result) => {
-
-            if (err) return res.send(err);
+            if (err) return res.status(500).send({ success: false, message: 'Error en el servidor' });
 
             if (result.length === 0) {
-
-                return res.send({
-                    success: false,
-                    message: 'Usuario no encontrado'
-                });
-
+                return res.send({ success: false, message: 'Usuario no encontrado' });
             }
 
-            // 🔥 VALIDAR CONTRASEÑA ACTUAL
             if (result[0].password !== currentPassword) {
-
-                return res.send({
-                    success: false,
-                    message: 'Contraseña actual incorrecta'
-                });
-
+                return res.send({ success: false, message: 'Contraseña actual incorrecta' });
             }
 
-            // 🔥 ACTUALIZAR NUEVA CONTRASEÑA
             db.query(
                 'UPDATE users SET password = ? WHERE id = ?',
                 [newPassword, userId],
                 (err) => {
-
-                    if (err) return res.send(err);
+                    if (err) return res.status(500).send({ success: false, message: 'Error en el servidor' });
 
                     res.send({
                         success: true,
                         message: 'Contraseña actualizada correctamente'
                     });
-
                 }
             );
-
         }
     );
-
 });
 
 // ==============================
