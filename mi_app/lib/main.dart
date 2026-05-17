@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-const BASE_URL = "https://ganacol-backend.onrender.com";
+const BASE_URL = "https://ganacol-backend-production.up.railway.app";
 
 void main() {
   runApp(MyApp());
