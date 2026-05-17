@@ -62,7 +62,6 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
   TextEditingController sponsorController = TextEditingController();
@@ -72,94 +71,84 @@ class _LoginPageState extends State<LoginPage> {
   // ================= LOGIN =================
 
   Future<void> login() async {
-
-    final response = await http.post(
-      Uri.parse('$BASE_URL/login'),
-      headers: {"Content-Type": "application/json"},
-      body: json.encode({
-        "email": emailController.text,
-        "password": passwordController.text,
-      }),
-    );
-
-    final data = json.decode(response.body);
-
-    if (data['user'] != null) {
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => HomePage(user: data['user']),
-        ),
+    try {
+      final response = await http.post(
+        Uri.parse('$BASE_URL/login'),
+        headers: {"Content-Type": "application/json"},
+        body: json.encode({
+          "email": emailController.text,
+          "password": passwordController.text,
+        }),
       );
 
-    } else {
+      final data = json.decode(response.body);
 
+      if (data['success'] == true && data['user'] != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomePage(user: data['user']),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(data['message'] ?? "Login incorrecto")),
+        );
+      }
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Login incorrecto")),
+        SnackBar(content: Text("Error de conexión. Intenta de nuevo.")),
       );
-
     }
-
   }
 
   // ================= VALIDAR SPONSOR =================
 
   Future<void> validarSponsor() async {
+    try {
+      final response = await http.post(
+        Uri.parse('$BASE_URL/validate-sponsor'),
+        headers: {"Content-Type": "application/json"},
+        body: json.encode({"codigo": sponsorController.text}),
+      );
 
-    final response = await http.post(
-      Uri.parse('$BASE_URL/validate-sponsor'),
-      headers: {"Content-Type": "application/json"},
-      body: json.encode({
-        "codigo": sponsorController.text
-      }),
-    );
+      final data = json.decode(response.body);
 
-    final data = json.decode(response.body);
-
-    if (data['success']) {
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => RegisterPage(
-            sponsorId: data['sponsor']['id'].toString(),
+      if (data['success']) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RegisterPage(
+              sponsorId: data['sponsor']['id'].toString(),
+            ),
           ),
-        ),
-      );
-
-    } else {
-
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(data['message'])),
+        );
+      }
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(data['message'])),
+        SnackBar(content: Text("Error de conexión. Intenta de nuevo.")),
       );
-
     }
-
   }
 
   // ================= UI =================
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
-
-      appBar: AppBar(
-        title: Text("GANACOL"),
-      ),
-
+      appBar: AppBar(title: Text("GANACOL")),
       body: Padding(
-
         padding: EdgeInsets.all(20),
-
         child: Column(
-
           children: [
-
             // EMAIL
             TextField(
               controller: emailController,
+              keyboardType: TextInputType.emailAddress,
               decoration: InputDecoration(
                 labelText: "Email",
                 border: OutlineInputBorder(),
@@ -172,27 +161,18 @@ class _LoginPageState extends State<LoginPage> {
             TextField(
               controller: passwordController,
               obscureText: !mostrarPassword,
-
               decoration: InputDecoration(
                 labelText: "Password",
                 border: OutlineInputBorder(),
-
                 suffixIcon: IconButton(
-
                   icon: Icon(
-                    mostrarPassword
-                        ? Icons.visibility
-                        : Icons.visibility_off,
+                    mostrarPassword ? Icons.visibility : Icons.visibility_off,
                   ),
-
                   onPressed: () {
-
                     setState(() {
                       mostrarPassword = !mostrarPassword;
                     });
-
                   },
-
                 ),
               ),
             ),
@@ -202,7 +182,6 @@ class _LoginPageState extends State<LoginPage> {
             // BOTON LOGIN
             SizedBox(
               width: double.infinity,
-
               child: ElevatedButton(
                 onPressed: login,
                 child: Text("Ingresar"),
@@ -217,10 +196,7 @@ class _LoginPageState extends State<LoginPage> {
 
             Text(
               "¿Tienes código de invitación?",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
 
             SizedBox(height: 15),
@@ -228,7 +204,6 @@ class _LoginPageState extends State<LoginPage> {
             // CODIGO SPONSOR
             TextField(
               controller: sponsorController,
-
               decoration: InputDecoration(
                 labelText: "Código del sponsor",
                 border: OutlineInputBorder(),
@@ -240,13 +215,11 @@ class _LoginPageState extends State<LoginPage> {
             // BOTON VALIDAR
             SizedBox(
               width: double.infinity,
-
               child: ElevatedButton(
                 onPressed: validarSponsor,
                 child: Text("Crear cuenta"),
               ),
             ),
-
           ],
         ),
       ),
@@ -262,8 +235,7 @@ class RegisterPage extends StatefulWidget {
   RegisterPage({required this.sponsorId});
 
   @override
-  _RegisterPageState createState() =>
-      _RegisterPageState();
+  _RegisterPageState createState() => _RegisterPageState();
 }
 
 class _RegisterPageState extends State<RegisterPage> {
@@ -275,25 +247,33 @@ class _RegisterPageState extends State<RegisterPage> {
   TextEditingController password = TextEditingController();
 
   Future<void> register() async {
-    final response = await http.post(
-      Uri.parse('$BASE_URL/register'),
-      headers: {"Content-Type": "application/json"},
-      body: json.encode({
-        "nombre": nombre.text,
-        "email": email.text,
-        "telefono": telefono.text,
-        "password": password.text,
-        "sponsor_id": int.parse(widget.sponsorId),
-      }),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse('$BASE_URL/register'),
+        headers: {"Content-Type": "application/json"},
+        body: json.encode({
+          "nombre": nombre.text,
+          "email": email.text,
+          "telefono": telefono.text,
+          "password": password.text,
+          "sponsor_id": int.parse(widget.sponsorId),
+        }),
+      );
 
-    final data = json.decode(response.body);
+      final data = json.decode(response.body);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(data['message'])),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(data['message'])),
+      );
 
-    Navigator.pop(context);
+      if (data['success'] == true) {
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error de conexión. Intenta de nuevo.")),
+      );
+    }
   }
 
   @override
@@ -310,30 +290,30 @@ class _RegisterPageState extends State<RegisterPage> {
 
             TextField(
               controller: nombre,
-              decoration:
-                  InputDecoration(labelText: "Nombre"),
+              decoration: InputDecoration(labelText: "Nombre"),
             ),
 
             SizedBox(height: 15),
 
             TextField(
               controller: email,
-              decoration:
-                  InputDecoration(labelText: "Email"),
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(labelText: "Email"),
             ),
 
             SizedBox(height: 15),
 
             TextField(
               controller: telefono,
-              decoration:
-                  InputDecoration(labelText: "Teléfono"),
+              keyboardType: TextInputType.phone,
+              decoration: InputDecoration(labelText: "Teléfono"),
             ),
 
             SizedBox(height: 15),
 
             TextField(
               controller: password,
+              obscureText: !mostrarPasswordRegister,
               decoration: InputDecoration(
                 labelText: "Password",
                 suffixIcon: IconButton(
@@ -344,13 +324,11 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   onPressed: () {
                     setState(() {
-                      mostrarPasswordRegister =
-                          !mostrarPasswordRegister;
+                      mostrarPasswordRegister = !mostrarPasswordRegister;
                     });
                   },
                 ),
               ),
-              obscureText: !mostrarPasswordRegister,
             ),
 
             SizedBox(height: 20),
@@ -381,48 +359,34 @@ class _HomePageState extends State<HomePage> {
   List users = [];
   List commissions = [];
   double total = 0;
-  // 🔥 NUEVAS VARIABLES
   double pagoMensual = 0;
-
   int totalPersonas = 0;
-
   String proximoCorte = "";
 
   Future<void> getPlan() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$BASE_URL/my-plan/${widget.user['id']}'),
+      );
 
-  final response = await http.get(
-    Uri.parse('$BASE_URL/my-plan/${widget.user['id']}'),
-  );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
 
-  final data = json.decode(response.body);
+        setState(() {
+          pagoMensual = double.parse(data['pago_mensual'].toString());
+          totalPersonas = data['total_personas'];
 
-  setState(() {
-
-    pagoMensual =
-        double.parse(data['pago_mensual'].toString());
-
-    totalPersonas =
-        data['total_personas'];
-
-    final hoy = DateTime.now();
-
-    if (hoy.day <= 15) {
-
-      proximoCorte = "15";
-
-    } else {
-
-      proximoCorte = "30";
-
+          final hoy = DateTime.now();
+          proximoCorte = hoy.day <= 15 ? "15" : "30";
+        });
+      }
+    } catch (e) {
+      // Silencioso — se muestra en pantalla con valores en 0
     }
-
-  });
-
-}
+  }
 
   bool isAdmin() {
-    return widget.user['email'] ==
-        "quecuriosodia@gmail.com";
+    return widget.user['email'] == "quecuriosodia@gmail.com";
   }
 
   String getUserEmail(id) {
@@ -443,46 +407,49 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> getUsers() async {
-    final res = await http.get(
-      Uri.parse('$BASE_URL/users'),
-    );
+    try {
+      final res = await http.get(Uri.parse('$BASE_URL/users'));
 
-    if (res.statusCode == 200) {
-      setState(() {
-        users = json.decode(res.body);
-      });
+      if (res.statusCode == 200) {
+        setState(() {
+          users = json.decode(res.body);
+        });
+      }
+    } catch (e) {
+      // Error silencioso
     }
   }
 
   Future<void> getCommissions() async {
-    final res = await http.get(
-      Uri.parse(
-        '$BASE_URL/my-commissions/${widget.user['id']}',
-      ),
-    );
+    try {
+      final res = await http.get(
+        Uri.parse('$BASE_URL/my-commissions/${widget.user['id']}'),
+      );
 
-    if (res.statusCode == 200) {
-      setState(() {
-        commissions = json.decode(res.body);
-      });
+      if (res.statusCode == 200) {
+        setState(() {
+          commissions = json.decode(res.body);
+        });
+      }
+    } catch (e) {
+      // Error silencioso
     }
   }
 
   Future<void> getTotal() async {
-    final res = await http.get(
-      Uri.parse(
-        '$BASE_URL/my-total/${widget.user['id']}',
-      ),
-    );
+    try {
+      final res = await http.get(
+        Uri.parse('$BASE_URL/my-total/${widget.user['id']}'),
+      );
 
-    if (res.statusCode == 200) {
-      final data = json.decode(res.body);
-
-      setState(() {
-        total =
-            double.tryParse(data['total'].toString()) ??
-                0;
-      });
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
+        setState(() {
+          total = double.tryParse(data['total'].toString()) ?? 0;
+        });
+      }
+    } catch (e) {
+      // Error silencioso
     }
   }
 
@@ -497,19 +464,15 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title:
-            Text("Hola ${widget.user['nombre']}"),
+        title: Text("Hola ${widget.user['nombre']}"),
         actions: [
           if (isAdmin())
             IconButton(
-              icon:
-                  Icon(Icons.admin_panel_settings),
+              icon: Icon(Icons.admin_panel_settings),
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => AdminPage(),
-                  ),
+                  MaterialPageRoute(builder: (_) => AdminPage()),
                 );
               },
             ),
@@ -520,8 +483,7 @@ class _HomePageState extends State<HomePage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) =>
-                      NetworkPage(user: widget.user),
+                  builder: (_) => NetworkPage(user: widget.user),
                 ),
               );
             },
@@ -533,8 +495,7 @@ class _HomePageState extends State<HomePage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) =>
-                      ProfilePage(user: widget.user),
+                  builder: (_) => ProfilePage(user: widget.user),
                 ),
               );
             },
@@ -545,9 +506,7 @@ class _HomePageState extends State<HomePage> {
             onPressed: () {
               Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => LoginPage(),
-                ),
+                MaterialPageRoute(builder: (_) => LoginPage()),
                 (route) => false,
               );
             },
@@ -557,68 +516,59 @@ class _HomePageState extends State<HomePage> {
       body: Column(
         children: [
           Container(
-  width: double.infinity,
-  padding: EdgeInsets.all(20),
-  color: Colors.green,
+            width: double.infinity,
+            padding: EdgeInsets.all(20),
+            color: Colors.green,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "TOTAL GANADO",
+                  style: TextStyle(color: Colors.white70, fontSize: 16),
+                ),
 
-  child: Column(
+                SizedBox(height: 10),
 
-    crossAxisAlignment:
-        CrossAxisAlignment.start,
+                // FIX: mostrar 'total' (suma de comisiones), no pagoMensual
+                Text(
+                  "\$${total.toStringAsFixed(0)} USD",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 35,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
 
-    children: [
+                SizedBox(height: 10),
 
-      Text(
-        "TOTAL GANADO",
-        style: TextStyle(
-          color: Colors.white70,
-          fontSize: 16,
-        ),
-      ),
+                Text(
+                  "Plan mensual: \$${pagoMensual.toStringAsFixed(0)} USD",
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                ),
 
-      SizedBox(height: 10),
+                SizedBox(height: 15),
 
-      Text(
-        "\$${pagoMensual.toStringAsFixed(0)} USD",
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 35,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
+                Text(
+                  "Personas en red: $totalPersonas",
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
 
-      SizedBox(height: 15),
+                SizedBox(height: 8),
 
-      Text(
-        "Personas en red: $totalPersonas",
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 16,
-        ),
-      ),
-
-      SizedBox(height: 8),
-
-      Text(
-        "Próximo corte: Día $proximoCorte",
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 16,
-        ),
-      ),
-
-    ],
-  ),
-),
+                Text(
+                  "Próximo corte: Día $proximoCorte",
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ],
+            ),
+          ),
 
           Expanded(
             child: ListView.builder(
               itemCount: commissions.length,
               itemBuilder: (_, i) {
                 return ListTile(
-                  title: Text(
-                    "\$${commissions[i]['monto']}",
-                  ),
+                  title: Text("\$${commissions[i]['monto']}"),
                   subtitle: Text(
                     "De: ${getUserEmail(commissions[i]['from_user_id'])}",
                   ),
@@ -636,109 +586,105 @@ class _HomePageState extends State<HomePage> {
 
 class AdminPage extends StatefulWidget {
   @override
-  _AdminPageState createState() =>
-      _AdminPageState();
+  _AdminPageState createState() => _AdminPageState();
 }
 
 class _AdminPageState extends State<AdminPage> {
   List users = [];
 
   Future<void> getUsers() async {
-    final response = await http.get(
-      Uri.parse('$BASE_URL/users'),
-    );
+    try {
+      final response = await http.get(Uri.parse('$BASE_URL/users'));
 
-    if (response.statusCode == 200) {
-      setState(() {
-        users = json.decode(response.body);
-      });
+      if (response.statusCode == 200) {
+        setState(() {
+          users = json.decode(response.body);
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error al cargar usuarios")),
+      );
     }
   }
 
   Future<void> activar(int id) async {
-    await http.post(
-      Uri.parse('$BASE_URL/activate/$id'),
-    );
-
-    getUsers();
+    try {
+      await http.post(Uri.parse('$BASE_URL/activate/$id'));
+      getUsers();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error al activar usuario")),
+      );
+    }
   }
 
   Future<void> desactivar(int id) async {
-    await http.post(
-      Uri.parse('$BASE_URL/deactivate/$id'),
-    );
-
-    getUsers();
-  }
-  
-  Future<void> eliminarUsuario(int id) async {
-
-  TextEditingController passwordController =
-      TextEditingController();
-
-  showDialog(
-    context: context,
-    builder: (_) {
-
-      return AlertDialog(
-
-        title: Text("Clave de administrador"),
-
-        content: TextField(
-          controller: passwordController,
-          obscureText: true,
-          decoration: InputDecoration(
-            labelText: "Ingrese la clave",
-          ),
-        ),
-
-        actions: [
-
-          TextButton(
-            child: Text("Cancelar"),
-            onPressed: () {
-              Navigator.pop(context);
-            },
-          ),
-
-          ElevatedButton(
-            child: Text("Eliminar"),
-            onPressed: () async {
-
-              final response = await http.post(
-                Uri.parse('$BASE_URL/delete-user/$id'),
-
-                headers: {
-                  "Content-Type": "application/json"
-                },
-
-                body: json.encode({
-                  "adminPassword":
-                      passwordController.text
-                }),
-              );
-
-              final data =
-                  json.decode(response.body);
-
-              Navigator.pop(context);
-
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(
-                SnackBar(
-                  content: Text(data['message']),
-                ),
-              );
-
-              getUsers();
-            },
-          ),
-
-        ],
+    try {
+      await http.post(Uri.parse('$BASE_URL/deactivate/$id'));
+      getUsers();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error al desactivar usuario")),
       );
-    },
-  );
-}
+    }
+  }
+
+  Future<void> eliminarUsuario(int id) async {
+    TextEditingController passwordController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          title: Text("Clave de administrador"),
+          content: TextField(
+            controller: passwordController,
+            obscureText: true,
+            decoration: InputDecoration(labelText: "Ingrese la clave"),
+          ),
+          actions: [
+            TextButton(
+              child: Text("Cancelar"),
+              onPressed: () => Navigator.pop(context),
+            ),
+            ElevatedButton(
+              child: Text("Eliminar"),
+              onPressed: () async {
+                try {
+                  final response = await http.post(
+                    Uri.parse('$BASE_URL/delete-user/$id'),
+                    headers: {"Content-Type": "application/json"},
+                    body: json.encode({
+                      "adminPassword": passwordController.text,
+                    }),
+                  );
+
+                  final data = json.decode(response.body);
+
+                  Navigator.pop(context);
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(data['message'])),
+                  );
+
+                  if (data['success'] == true) {
+                    getUsers();
+                  }
+                } catch (e) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Error de conexión")),
+                  );
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -748,122 +694,67 @@ class _AdminPageState extends State<AdminPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar:
-          AppBar(title: Text("Admin Panel")),
+      appBar: AppBar(title: Text("Admin Panel")),
       body: ListView.builder(
         itemCount: users.length,
         itemBuilder: (_, i) {
+          var u = users[i];
 
-  var u = users[i];
+          Color estadoColor = Colors.orange;
+          if (u['estado'] == 'activo') estadoColor = Colors.green;
+          if (u['estado'] == 'inactivo') estadoColor = Colors.red;
 
-  // 🔥 COLOR SEGÚN ESTADO
-  Color estadoColor = Colors.orange;
-
-  if (u['estado'] == 'activo') {
-    estadoColor = Colors.green;
-  }
-
-  if (u['estado'] == 'inactivo') {
-    estadoColor = Colors.red;
-  }
-
-  return Card(
-
-    margin: EdgeInsets.symmetric(
-      horizontal: 10,
-      vertical: 5,
-    ),
-
-    child: ListTile(
-
-      // 🔥 NOMBRE
-      title: Text(
-        u['nombre'],
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-
-      // 🔥 INFO
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-
-          SizedBox(height: 5),
-
-          Text(
-            "Código: ${u['codigo'] ?? 'Sin código'}",
-          ),
-
-          SizedBox(height: 8),
-
-          Container(
-
-            padding: EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 5,
-            ),
-
-            decoration: BoxDecoration(
-              color: estadoColor,
-              borderRadius: BorderRadius.circular(20),
-            ),
-
-            child: Text(
-
-              u['estado'].toUpperCase(),
-
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+          return Card(
+            margin: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            child: ListTile(
+              title: Text(
+                u['nombre'],
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
-
-            ),
-
-          ),
-
-        ],
-      ),
-
-      // 🔥 BOTONES
-      trailing: Row(
-
-        mainAxisSize: MainAxisSize.min,
-
-        children: [
-
-          // ✅ SOLO MOSTRAR ACTIVAR
-          if (u['estado'] != 'activo')
-            IconButton(
-              icon: Icon(
-                Icons.check,
-                color: Colors.green,
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(height: 5),
+                  Text("Código: ${u['codigo'] ?? 'Sin código'}"),
+                  SizedBox(height: 8),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: estadoColor,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      u['estado'].toUpperCase(),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              onPressed: () => activar(u['id']),
-            ),
-
-          // ✅ SOLO MOSTRAR DESACTIVAR
-          if (u['estado'] != 'inactivo')
-            IconButton(
-              icon: Icon(
-                Icons.close,
-                color: Colors.red,
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (u['estado'] != 'activo')
+                    IconButton(
+                      icon: Icon(Icons.check, color: Colors.green),
+                      onPressed: () => activar(u['id']),
+                    ),
+                  if (u['estado'] != 'inactivo')
+                    IconButton(
+                      icon: Icon(Icons.close, color: Colors.red),
+                      onPressed: () => desactivar(u['id']),
+                    ),
+                  IconButton(
+                    icon: Icon(Icons.delete, color: Colors.black),
+                    onPressed: () => eliminarUsuario(u['id']),
+                  ),
+                ],
               ),
-              onPressed: () => desactivar(u['id']),
             ),
-            IconButton(
-              icon: Icon(
-                Icons.delete,
-                color: Colors.black,
-              ),
-              onPressed: () => eliminarUsuario(u['id']),
-            ),
-        ],
-      ),
-
-    ),
-  );
-},
+          );
+        },
       ),
     );
   }
@@ -871,27 +762,122 @@ class _AdminPageState extends State<AdminPage> {
 
 // ================= PERFIL =================
 
-class ProfilePage extends StatelessWidget {
+// FIX: Cambiado a StatefulWidget para poder usar context correctamente
+class ProfilePage extends StatefulWidget {
   final Map user;
 
   ProfilePage({required this.user});
 
   @override
+  _ProfilePageState createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  // FIX: Movido aquí desde ProfilePage (StatelessWidget) — ahora tiene acceso
+  // correcto a context y widget
+  void mostrarCambiarPassword() {
+    final actualController = TextEditingController();
+    final nuevaController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          title: Text("Cambiar contraseña"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: actualController,
+                obscureText: true,
+                decoration: InputDecoration(labelText: "Contraseña actual"),
+              ),
+              SizedBox(height: 15),
+              TextField(
+                controller: nuevaController,
+                obscureText: true,
+                decoration: InputDecoration(labelText: "Nueva contraseña"),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              child: Text("Cancelar"),
+              onPressed: () => Navigator.pop(context),
+            ),
+            ElevatedButton(
+              child: Text("Guardar"),
+              onPressed: () async {
+                try {
+                  final response = await http.post(
+                    Uri.parse('$BASE_URL/change-password'),
+                    headers: {'Content-Type': 'application/json'},
+                    body: json.encode({
+                      'userId': widget.user['id'],
+                      'currentPassword': actualController.text,
+                      'newPassword': nuevaController.text,
+                    }),
+                  );
+
+                  final data = json.decode(response.body);
+
+                  Navigator.pop(context);
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(data['message'])),
+                  );
+                } catch (e) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Error de conexión")),
+                  );
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text("Perfil")),
-      body: Column(
-        children: [
-          Text(user['nombre']),
-          Text(user['email']),
-          Text("Código: ${user['codigo']}"),
-        ],
+      body: Padding(
+        padding: EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.user['nombre'],
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 10),
+            Text(widget.user['email']),
+            SizedBox(height: 10),
+            Text("Código: ${widget.user['codigo']}"),
+            SizedBox(height: 30),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: Icon(Icons.lock),
+                label: Text("Cambiar contraseña"),
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                ),
+                onPressed: mostrarCambiarPassword,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
 // ================= RED =================
+
 class NetworkPage extends StatefulWidget {
   final Map user;
 
@@ -910,17 +896,25 @@ class _NetworkPageState extends State<NetworkPage> {
       cargando = true;
     });
 
-    final res = await http.get(
-      Uri.parse('$BASE_URL/my-network/$userId'),
-    );
+    try {
+      final res = await http.get(
+        Uri.parse('$BASE_URL/my-network/$userId'),
+      );
 
-    if (res.statusCode == 200) {
-      final data = json.decode(res.body);
-
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
+        setState(() {
+          directos = data['directos'];
+          cargando = false;
+        });
+      }
+    } catch (e) {
       setState(() {
-        directos = data['directos'];
         cargando = false;
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error al cargar la red")),
+      );
     }
   }
 
@@ -931,124 +925,50 @@ class _NetworkPageState extends State<NetworkPage> {
   }
 
   Widget cajaUsuario(dynamic u) {
+    Color colorEstado = Colors.orange;
+    if (u['estado'] == 'activo') colorEstado = Colors.green;
+    if (u['estado'] == 'inactivo') colorEstado = Colors.red;
 
-  Color colorEstado = Colors.orange;
-
-  if (u['estado'] == 'activo') {
-    colorEstado = Colors.green;
-  }
-
-  if (u['estado'] == 'inactivo') {
-    colorEstado = Colors.red;
-  }
-
-  return GestureDetector(
-
-    onTap: () {
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => NetworkPage(user: u),
-        ),
-      );
-
-    },
-
-    child: Container(
-
-      width: 100,
-      height: 100,
-
-      margin: EdgeInsets.symmetric(horizontal: 8),
-
-      decoration: BoxDecoration(
-
-        color: colorEstado,
-
-        borderRadius: BorderRadius.circular(12),
-
-      ),
-
-      child: Column(
-
-        mainAxisAlignment: MainAxisAlignment.center,
-
-        children: [
-
-          // 🔥 CÓDIGO
-          Text(
-
-            "${u['codigo']}",
-
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-            ),
-
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => NetworkPage(user: u),
           ),
-
-          SizedBox(height: 6),
-
-          // 🔥 NOMBRE
-          Padding(
-
-            padding: EdgeInsets.symmetric(horizontal: 5),
-
-            child: Text(
-
-              u['nombre'],
-
-              textAlign: TextAlign.center,
-
-              maxLines: 2,
-
-              overflow: TextOverflow.ellipsis,
-
+        );
+      },
+      child: Container(
+        width: 100,
+        height: 100,
+        margin: EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color: colorEstado,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              "${u['codigo']}",
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 11,
-              ),
-
-            ),
-
-          ),
-
-        ],
-
-      ),
-
-    ),
-
-  );
-
-}
-
-  Widget espaciosVacios() {
-    int faltantes = 12 - directos.length;
-
-    return Row(
-      children: List.generate(
-        faltantes,
-        (index) => Container(
-          width: 90,
-          height: 90,
-          margin: EdgeInsets.symmetric(horizontal: 8),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade300,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey),
-          ),
-          child: Center(
-            child: Text(
-              "VACÍO",
-              style: TextStyle(
-                color: Colors.black54,
                 fontWeight: FontWeight.bold,
+                fontSize: 20,
               ),
             ),
-          ),
+            SizedBox(height: 6),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 5),
+              child: Text(
+                u['nombre'],
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: Colors.white, fontSize: 11),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1066,99 +986,62 @@ class _NetworkPageState extends State<NetworkPage> {
               children: [
                 SizedBox(height: 20),
 
-// 🔥 USUARIO ACTUAL
-Center(
-  child: Container(
+                // USUARIO ACTUAL
+                Center(
+                  child: Container(
+                    width: 120,
+                    height: 110,
+                    decoration: BoxDecoration(
+                      color: widget.user['estado'] == 'activo'
+                          ? Colors.green
+                          : widget.user['estado'] == 'inactivo'
+                              ? Colors.red
+                              : Colors.orange,
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black12, blurRadius: 5),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "${widget.user['codigo']}",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 24,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 6),
+                          child: Text(
+                            widget.user['nombre'],
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
 
-    width: 120,
-    height: 110,
+                SizedBox(height: 25),
 
-    decoration: BoxDecoration(
+                Icon(Icons.keyboard_arrow_down, size: 35, color: Colors.grey),
 
-      color: widget.user['estado'] == 'activo'
-          ? Colors.green
-          : widget.user['estado'] == 'inactivo'
-              ? Colors.red
-              : Colors.orange,
+                SizedBox(height: 10),
 
-      borderRadius: BorderRadius.circular(15),
-
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black12,
-          blurRadius: 5,
-        ),
-      ],
-
-    ),
-
-    child: Column(
-
-      mainAxisAlignment: MainAxisAlignment.center,
-
-      children: [
-
-        Text(
-
-          "${widget.user['codigo']}",
-
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 24,
-          ),
-
-        ),
-
-        SizedBox(height: 8),
-
-        Padding(
-
-          padding: EdgeInsets.symmetric(horizontal: 6),
-
-          child: Text(
-
-            widget.user['nombre'],
-
-            textAlign: TextAlign.center,
-
-            maxLines: 2,
-
-            overflow: TextOverflow.ellipsis,
-
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-            ),
-
-          ),
-
-        ),
-
-      ],
-
-    ),
-
-  ),
-),
-
-SizedBox(height: 25),
-
-Icon(
-  Icons.keyboard_arrow_down,
-  size: 35,
-  color: Colors.grey,
-),
-
-SizedBox(height: 10),
-
-Text(
-  "Directos",
-  style: TextStyle(
-    fontSize: 22,
-    fontWeight: FontWeight.bold,
-  ),
-),
+                Text(
+                  "Directos",
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                ),
 
                 SizedBox(height: 20),
 
@@ -1168,7 +1051,7 @@ Text(
                     children: [
                       ...directos.map((u) => cajaUsuario(u)).toList(),
                       ...List.generate(
-                        12 - directos.length,
+                        (12 - directos.length).clamp(0, 12),
                         (index) => Container(
                           width: 90,
                           height: 90,
@@ -1197,10 +1080,11 @@ Text(
 
                 Text(
                   "Toque un código para bajar en la red",
-                  style: TextStyle(
-                    color: Colors.grey,
-                  ),
+                  style: TextStyle(color: Colors.grey),
                 ),
+
+                // FIX: Botón "Cambiar contraseña" eliminado de NetworkPage
+                // — no tiene sentido aquí, pertenece a ProfilePage
               ],
             ),
     );
