@@ -583,7 +583,6 @@ class _HomePageState extends State<HomePage> {
 }
 
 // ================= ADMIN =================
-
 class AdminPage extends StatefulWidget {
   @override
   _AdminPageState createState() => _AdminPageState();
@@ -591,6 +590,7 @@ class AdminPage extends StatefulWidget {
 
 class _AdminPageState extends State<AdminPage> {
   List users = [];
+  String search = "";
 
   Future<void> getUsers() async {
     try {
@@ -641,7 +641,9 @@ class _AdminPageState extends State<AdminPage> {
           content: TextField(
             controller: passwordController,
             obscureText: true,
-            decoration: InputDecoration(labelText: "Ingrese la clave"),
+            decoration: InputDecoration(
+              labelText: "Ingrese la clave",
+            ),
           ),
           actions: [
             TextButton(
@@ -654,7 +656,9 @@ class _AdminPageState extends State<AdminPage> {
                 try {
                   final response = await http.post(
                     Uri.parse('$BASE_URL/delete-user/$id'),
-                    headers: {"Content-Type": "application/json"},
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
                     body: json.encode({
                       "adminPassword": passwordController.text,
                     }),
@@ -673,6 +677,7 @@ class _AdminPageState extends State<AdminPage> {
                   }
                 } catch (e) {
                   Navigator.pop(context);
+
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text("Error de conexión")),
                   );
@@ -693,73 +698,158 @@ class _AdminPageState extends State<AdminPage> {
 
   @override
   Widget build(BuildContext context) {
+    final filteredUsers = users.where((u) {
+      return u['nombre']
+              .toString()
+              .toLowerCase()
+              .contains(search) ||
+
+          u['email']
+              .toString()
+              .toLowerCase()
+              .contains(search) ||
+
+          u['codigo']
+              .toString()
+              .toLowerCase()
+              .contains(search);
+    }).toList();
+
     return Scaffold(
-      appBar: AppBar(title: Text("Admin Panel")),
-      body: ListView.builder(
-        itemCount: users.length,
-        itemBuilder: (_, i) {
-          var u = users[i];
+      appBar: AppBar(
+        title: Text("Admin Panel"),
+      ),
 
-          Color estadoColor = Colors.orange;
-          if (u['estado'] == 'activo') estadoColor = Colors.green;
-          if (u['estado'] == 'inactivo') estadoColor = Colors.red;
+      body: Column(
+        children: [
 
-          return Card(
-            margin: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            child: ListTile(
-              title: Text(
-                u['nombre'],
-                style: TextStyle(fontWeight: FontWeight.bold),
+          // BUSCADOR
+          Padding(
+            padding: EdgeInsets.all(10),
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: "Buscar por nombre, email o código",
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(height: 5),
-                  Text("Código: ${u['codigo'] ?? 'Sin código'}"),
-                  SizedBox(height: 8),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: estadoColor,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      u['estado'].toUpperCase(),
+              onChanged: (value) {
+                setState(() {
+                  search = value.toLowerCase();
+                });
+              },
+            ),
+          ),
+
+          // LISTA
+          Expanded(
+            child: ListView.builder(
+              itemCount: filteredUsers.length,
+
+              itemBuilder: (_, i) {
+                var u = filteredUsers[i];
+
+                Color estadoColor = Colors.orange;
+
+                if (u['estado'] == 'activo') {
+                  estadoColor = Colors.green;
+                }
+
+                if (u['estado'] == 'inactivo') {
+                  estadoColor = Colors.red;
+                }
+
+                return Card(
+                  margin: EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+
+                  child: ListTile(
+                    title: Text(
+                      u['nombre'],
                       style: TextStyle(
-                        color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                ],
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (u['estado'] != 'activo')
-                    IconButton(
-                      icon: Icon(Icons.check, color: Colors.green),
-                      onPressed: () => activar(u['id']),
+
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+
+                        SizedBox(height: 5),
+
+                        Text(
+                          "Código: ${u['codigo'] ?? 'Sin código'}",
+                        ),
+
+                        SizedBox(height: 8),
+
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 5,
+                          ),
+
+                          decoration: BoxDecoration(
+                            color: estadoColor,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+
+                          child: Text(
+                            u['estado'].toUpperCase(),
+
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  if (u['estado'] != 'inactivo')
-                    IconButton(
-                      icon: Icon(Icons.close, color: Colors.red),
-                      onPressed: () => desactivar(u['id']),
+
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+
+                        if (u['estado'] != 'activo')
+                          IconButton(
+                            icon: Icon(
+                              Icons.check,
+                              color: Colors.green,
+                            ),
+                            onPressed: () => activar(u['id']),
+                          ),
+
+                        if (u['estado'] != 'inactivo')
+                          IconButton(
+                            icon: Icon(
+                              Icons.close,
+                              color: Colors.red,
+                            ),
+                            onPressed: () => desactivar(u['id']),
+                          ),
+
+                        IconButton(
+                          icon: Icon(
+                            Icons.delete,
+                            color: Colors.black,
+                          ),
+                          onPressed: () => eliminarUsuario(u['id']),
+                        ),
+                      ],
                     ),
-                  IconButton(
-                    icon: Icon(Icons.delete, color: Colors.black),
-                    onPressed: () => eliminarUsuario(u['id']),
                   ),
-                ],
-              ),
+                );
+              },
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
 }
-
 // ================= PERFIL =================
 
 // FIX: Cambiado a StatefulWidget para poder usar context correctamente
