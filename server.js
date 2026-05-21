@@ -143,6 +143,14 @@ app.post('/activate/:id', (req, res) => {
     db.query(
         'SELECT * FROM users WHERE id = ?',
         [userId],
+        (err, directos) => {
+
+    if (err) {
+        return res.status(500).send({
+            success: false,
+            message: 'Error en el servidor'
+        });
+    }
         (err, resultEstado) => {
 
             if (err) {
@@ -287,7 +295,7 @@ app.post('/activate/:id', (req, res) => {
                 }
             );
         }
-    );
+});
 });
 
 // ==============================
