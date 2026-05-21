@@ -657,8 +657,34 @@ app.get('/my-network/:id', (req, res) => {
     const userId = req.params.id;
 
     db.query(
-        'SELECT id, codigo, nombre, estado FROM users WHERE sponsor_id = ?',
-        [userId],
+        `
+        SELECT 
+            u.id,
+            u.codigo,
+            u.nombre,
+            u.estado,
+
+            CASE
+                WHEN c.to_user_id IS NOT NULL THEN true
+                ELSE false
+            END AS genera_comision,
+
+            (
+                SELECT COUNT(*)
+                FROM commissions c2
+                WHERE c2.to_user_id = u.id
+            ) AS nivel_generador
+
+        FROM users u
+
+        LEFT JOIN commissions c
+        ON c.from_user_id = u.id
+        AND c.to_user_id = ?
+
+        WHERE u.sponsor_id = ?
+        `,
+        [userId, userId],
+
         (err, directos) => {
 
             if (err) {
@@ -668,6 +694,58 @@ app.get('/my-network/:id', (req, res) => {
                 });
             }
 
+            db.query(
+                `
+                SELECT 
+                    u.id,
+                    u.codigo,
+                    u.nombre,
+                    u.estado,
+
+                    CASE
+                        WHEN c.to_user_id IS NOT NULL THEN true
+                        ELSE false
+                    END AS genera_comision,
+
+                    (
+                        SELECT COUNT(*)
+                        FROM commissions c2
+                        WHERE c2.to_user_id = u.id
+                    ) AS nivel_generador
+
+                FROM users u
+
+                LEFT JOIN commissions c
+                ON c.from_user_id = u.id
+                AND c.to_user_id = ?
+
+                WHERE u.sponsor_id IN (
+                    SELECT id
+                    FROM users
+                    WHERE sponsor_id = ?
+                )
+                `,
+                [userId, userId],
+
+                (err, indirectos) => {
+
+                    if (err) {
+                        return res.status(500).send({
+                            success: false,
+                            message: 'Error en el servidor'
+                        });
+                    }
+
+                    res.send({
+                        directos,
+                        indirectos
+                    });
+                }
+            );
+        }
+    );
+});
+        
             // ==============================
             // AGREGAR VISUALES A DIRECTOS
             // ==============================
