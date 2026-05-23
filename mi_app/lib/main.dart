@@ -116,13 +116,14 @@ class _LoginPageState extends State<LoginPage> {
 
       if (data['success']) {
         Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => RegisterPage(
-              sponsorId: data['sponsor']['id'].toString(),
-            ),
-          ),
-        );
+  context,
+  MaterialPageRoute(
+    builder: (_) => NetworkPage(
+      user: widget.user,
+      viewerId: widget.user['id'],
+    ),
+  ),
+);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(data['message'])),
@@ -969,9 +970,15 @@ class _ProfilePageState extends State<ProfilePage> {
 // ================= RED =================
 
 class NetworkPage extends StatefulWidget {
+
   final Map user;
 
-  NetworkPage({required this.user});
+  final int viewerId;
+
+  NetworkPage({
+    required this.user,
+    required this.viewerId,
+  });
 
   @override
   _NetworkPageState createState() => _NetworkPageState();
@@ -988,13 +995,16 @@ class _NetworkPageState extends State<NetworkPage> {
 
     try {
       final res = await http.get(
-        Uri.parse('$BASE_URL/my-network/$userId'),
+        Uri.parse(
+  '$BASE_URL/my-network/$userId?viewer=${widget.viewerId}',
+),
       );
 
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
         setState(() {
           directos = data['directos'];
+          print(data);
           cargando = false;
         });
       }
@@ -1015,54 +1025,181 @@ class _NetworkPageState extends State<NetworkPage> {
   }
 
   Widget cajaUsuario(dynamic u) {
-    Color colorEstado = Colors.orange;
-    if (u['estado'] == 'activo') colorEstado = Colors.green;
-    if (u['estado'] == 'inactivo') colorEstado = Colors.red;
 
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => NetworkPage(user: u),
-          ),
-        );
-      },
-      child: Container(
-        width: 100,
-        height: 100,
-        margin: EdgeInsets.symmetric(horizontal: 8),
-        decoration: BoxDecoration(
-          color: colorEstado,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              "${u['codigo']}",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
-            ),
-            SizedBox(height: 6),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 5),
-              child: Text(
-                u['nombre'],
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: Colors.white, fontSize: 11),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  // ================= ESTADO =================
+
+  Color colorEstado = Colors.orange;
+
+  if (u['estado'] == 'activo') {
+    colorEstado = Colors.green;
   }
+
+  if (u['estado'] == 'inactivo') {
+    colorEstado = Colors.red;
+  }
+
+  // ================= NUEVA LOGICA VISUAL =================
+
+  bool generaComision = u['genera_comision'] == true;
+
+  int nivelGenerador = u['nivel_generador'] ?? 0;
+
+  Color borderColor = Colors.transparent;
+
+  double borderWidth = 0;
+
+  List<BoxShadow> sombras = [];
+
+  Widget? iconoSuperior;
+
+  // ================= GENERA COMISION =================
+
+  if (generaComision) {
+
+    borderColor = Colors.amber;
+
+    borderWidth = 3;
+
+    // ================= NIVEL 10 =================
+
+    if (nivelGenerador >= 10) {
+
+      sombras = [
+        BoxShadow(
+          color: Colors.amber.withOpacity(0.6),
+          blurRadius: 12,
+          spreadRadius: 2,
+        ),
+      ];
+
+      iconoSuperior = Icon(
+        Icons.local_fire_department,
+        color: Colors.orange,
+        size: 20,
+      );
+    }
+
+    // ================= NIVEL 20 =================
+
+    if (nivelGenerador >= 20) {
+
+      borderColor = Colors.purpleAccent;
+
+      sombras = [
+        BoxShadow(
+          color: Colors.purpleAccent.withOpacity(0.7),
+          blurRadius: 18,
+          spreadRadius: 3,
+        ),
+      ];
+
+      iconoSuperior = Icon(
+        Icons.workspace_premium,
+        color: Colors.amber,
+        size: 22,
+      );
+    }
+  }
+
+  // ================= UI =================
+
+  return GestureDetector(
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => NetworkPage(
+          user: u,
+          viewerId: widget.viewerId,
+ ),
+      );
+    },
+
+    child: Stack(
+      clipBehavior: Clip.none,
+      children: [
+
+        // ================= CUADRO =================
+
+        Container(
+          width: 100,
+          height: 100,
+
+          margin: EdgeInsets.symmetric(horizontal: 8),
+
+          decoration: BoxDecoration(
+
+            color: colorEstado,
+
+            borderRadius: BorderRadius.circular(12),
+
+            border: Border.all(
+              color: borderColor,
+              width: borderWidth,
+            ),
+
+            boxShadow: sombras,
+          ),
+
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+
+              Text(
+                "${u['codigo']}",
+
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
+              ),
+
+              SizedBox(height: 6),
+
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 5),
+
+                child: Text(
+                  u['nombre'],
+
+                  textAlign: TextAlign.center,
+
+                  maxLines: 2,
+
+                  overflow: TextOverflow.ellipsis,
+
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // ================= ICONO SUPERIOR =================
+
+        if (iconoSuperior != null)
+          Positioned(
+            top: -10,
+            right: -5,
+            child: Container(
+              padding: EdgeInsets.all(4),
+
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+
+              child: iconoSuperior,
+            ),
+          ),
+      ],
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
