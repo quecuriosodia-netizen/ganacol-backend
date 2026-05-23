@@ -118,9 +118,8 @@ class _LoginPageState extends State<LoginPage> {
         Navigator.push(
   context,
   MaterialPageRoute(
-    builder: (_) => NetworkPage(
-      user: widget.user,
-      viewerId: widget.user['id'],
+    builder: (_) => RegisterPage(
+      sponsorId: data['sponsor']['id'].toString(),
     ),
   ),
 );
@@ -484,7 +483,10 @@ class _HomePageState extends State<HomePage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => NetworkPage(user: widget.user),
+                  builder: (_) => NetworkPage(
+  user: widget.user,
+  viewerId: widget.user['id'],
+),
                 ),
               );
             },
@@ -1106,13 +1108,14 @@ class _NetworkPageState extends State<NetworkPage> {
   return GestureDetector(
     onTap: () {
       Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => NetworkPage(
-          user: u,
-          viewerId: widget.viewerId,
- ),
-      );
+  context,
+  MaterialPageRoute(
+    builder: (_) => NetworkPage(
+      user: u,
+      viewerId: widget.viewerId,
+    ),
+  ),
+);
     },
 
     child: Stack(
