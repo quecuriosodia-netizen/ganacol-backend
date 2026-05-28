@@ -12,11 +12,11 @@ app.use(cors());
 // ==============================
 
 const db = mysql.createConnection({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME
+    host: process.env.MYSQLHOST,
+    port: process.env.MYSQLPORT,
+    user: process.env.MYSQLUSER,
+    password: process.env.MYSQLPASSWORD,
+    database: process.env.MYSQLDATABASE
 });
 
 db.connect((err) => {
@@ -140,17 +140,12 @@ app.post('/activate/:id', (req, res) => {
 
     const userId = req.params.id;
 
+    // FIX 1: El callback original tenía dos parámetros duplicados:
+    // primero (err, directos) y luego suelto (err, resultEstado).
+    // Se eliminó el bloque duplicado y se usa (err, resultEstado) correcto.
     db.query(
         'SELECT * FROM users WHERE id = ?',
         [userId],
-        (err, directos) => {
-
-    if (err) {
-        return res.status(500).send({
-            success: false,
-            message: 'Error en el servidor'
-        });
-    }
         (err, resultEstado) => {
 
             if (err) {
@@ -295,7 +290,8 @@ app.post('/activate/:id', (req, res) => {
                 }
             );
         }
-});
+    // FIX 2: Sobraba un }); suelto al final que cerraba mal el endpoint.
+    );
 });
 
 // ==============================
@@ -488,14 +484,12 @@ app.get('/my-total/:id', (req, res) => {
 
 // ==============================
 // RED
-// FIX: El bloque original tenía dos versiones mezcladas del endpoint
-// (una con JOIN y otra con lógica manual) y rutas anidadas adentro
-// de callbacks. Se unificó en una sola versión limpia y correcta.
 // ==============================
 
 app.get('/my-network/:id', (req, res) => {
 
     const userId = req.params.id;
+    const viewerId = req.query.viewer || req.params.id;
 
     // PASO 1: Obtener directos
     db.query(
@@ -523,63 +517,112 @@ app.get('/my-network/:id', (req, res) => {
                         return res.status(500).send({ success: false, message: 'Error en el servidor' });
                     }
 
-                    // PASO 3: Marcar qué posiciones generan comisión
-                    const nuevosDirectos = directos.map((u, index) => {
-                        // Posiciones 1, 4, 7, 10 (base 1) van al sponsor del sponsor
-                        // Las demás generan comisión directa
-                        u.genera_comision = ![0, 3, 6, 9].includes(index);
-                        u.nivel_generador = 0;
-                        return u;
-                    });
+                    // PASO 3: Obtener directos del viewer para saber qué posiciones aplican
+                    db.query(
+                        'SELECT id FROM users WHERE sponsor_id = ?',
+                        [viewerId],
+                        (err, viewerDirectos) => {
 
-                    const nuevosIndirectos = indirectos.map((u) => {
-                        u.genera_comision = true;
-                        u.nivel_generador = 0;
-                        return u;
-                    });
-
-                    const todos = [...nuevosDirectos, ...nuevosIndirectos];
-
-                    // Si no hay nadie en la red, responder de inmediato
-                    if (todos.length === 0) {
-                        return res.send({
-                            directos: nuevosDirectos,
-                            indirectos: nuevosIndirectos
-                        });
-                    }
-
-                    // PASO 4: Calcular nivel_generador para cada persona
-                    let pendientes = todos.length;
-
-                    todos.forEach((usuario) => {
-
-                        db.query(
-                            `SELECT COUNT(*) as total
-                             FROM commissions
-                             WHERE to_user_id = ?`,
-                            [usuario.id],
-                            (err, result) => {
-
-                                if (!err) {
-                                    const total = result[0].total;
-                                    if (total >= 20) {
-                                        usuario.nivel_generador = 20;
-                                    } else if (total >= 10) {
-                                        usuario.nivel_generador = 10;
-                                    }
-                                }
-
-                                pendientes--;
-
-                                if (pendientes === 0) {
-                                    res.send({
-                                        directos: nuevosDirectos,
-                                        indirectos: nuevosIndirectos
-                                    });
-                                }
+                            // FIX 3: El callback de viewerDirectos no cerraba
+                            // correctamente — faltaba su }); al final, lo que
+                            // dejaba todos los bloques siguientes fuera de scope.
+                            if (err) {
+                                return res.status(500).send({ success: false, message: 'Error en el servidor' });
                             }
-                        );
-                    });
+
+                            const idsViewer = (viewerDirectos || []).map(x => x.id);
+
+                            db.query(
+                               `SELECT id
+                                FROM users
+                                 WHERE sponsor_id = ?`,
+                               [viewerId],
+                               (err, viewerDirectos) => {
+
+                                 const posicionesQueNoPagan = [0,3,6,9];
+
+                                 const idsQueGeneran = viewerDirectos
+                                    .filter((x, i) => !posicionesQueNoPagan.includes(i))
+                                    .map(x => x.id);
+
+                                 const nuevosDirectos = directos.map((u) => {
+
+    u.genera_comision = false;
+    u.nivel_generador = 0;
+
+    return u;
+});
+
+const nuevosIndirectos = indirectos.map((u) => {
+
+    u.genera_comision = false;
+    u.nivel_generador = 0;
+
+    return u;
+});
+
+const todos = [
+    ...nuevosDirectos,
+    ...nuevosIndirectos
+];                          
+
+                            if (todos.length === 0) {
+                                return res.send({
+                                    directos: nuevosDirectos,
+                                    indirectos: nuevosIndirectos
+                                });
+                            }
+
+                            // PASO 4: Calcular nivel_generador para cada persona
+                            let pendientes = todos.length;
+
+                            todos.forEach((usuario) => {
+
+                                db.query(
+                                    `SELECT COUNT(*) as total
+                                     FROM commissions
+                                     WHERE to_user_id = ?`,
+                                    [usuario.id],
+                                    (err, result) => {
+
+                                        if (!err) {
+                                            const total = result[0].total;
+                                            db.query(
+    `SELECT COUNT(*) as existe
+     FROM commissions
+     WHERE from_user_id = ?
+     AND to_user_id = ?`,
+    [usuario.id, viewerId],
+    (err2, result2) => {
+
+        if (!err2) {
+
+            usuario.genera_comision =
+                result2[0].existe > 0;
+        }
+    }
+);
+                                            if (total >= 20) {
+                                                usuario.nivel_generador = 20;
+                                            } else if (total >= 10) {
+                                                usuario.nivel_generador = 10;
+                                            }
+                                        }
+
+                                        pendientes--;
+
+                                        if (pendientes === 0) {
+                                            res.send({
+                                                directos: nuevosDirectos,
+                                                indirectos: nuevosIndirectos
+                                            });
+                                        }
+                                    });
+                                    }
+                                );
+                            });
+                        }
+                    ); // ← cierre del callback de viewerDirectos
                 }
             );
         }
